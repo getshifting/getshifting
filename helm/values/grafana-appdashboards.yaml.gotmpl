@@ -1,0 +1,56 @@
+global:
+  imageRegistry: {{ .Values.dockerRegistry }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+admin:
+  existingSecret: grafana-appdashboards-admin
+  userKey: admin-user
+  passwordKey: admin-password
+extraVolumes:
+  - name: secrets-store-inline
+    csi:
+      driver: secrets-store.csi.k8s.io
+      {{- if .Values.nodePublishSecretRefName }}
+      nodePublishSecretRef:
+        name: {{ .Values.nodePublishSecretRefName }}
+      {{- end }}
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: shift-secretprovider-grafana-appdashboards
+extraVolumeMounts:
+  - name: secrets-store-inline
+    mountPath: "/mnt/secrets-store"
+    readOnly: true
+persistence:
+  enabled: true
+podLabels:
+  azure.workload.identity/use: "true"
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.azure.com/mode
+              operator: In
+              values:
+                - user
+
+grafana.ini:
+  plugins:
+    allow_loading_unsigned_plugins: mullerpeter-databricks-datasource
+  server:
+    serve_from_sub_path: true
+  security:
+    csrf_additional_headers: ""
+  auth.jwt:
+    enabled: true
+    header_name: GrafanaAuth
+    username_claim: preferred_username
+    email_claim: email
+    auto_sign_up: true
+    allow_assign_grafana_admin: true
+    role_attribute_strict: true
+    role_attribute_path: contains(roles[*], 'Shift.ManagedRole.Business.Dashboards.Administrator') && 'Admin' || contains(roles[*], 'Shift.Role.Generic.Administrator') && 'Admin' || contains(roles[*], 'Shift.ManagedRole.Dashboards.User') && 'Editor' || contains(roles[*], 'Shift.ManagedRole.Dashboards.ReadOnly') && 'Viewer' || 'None'

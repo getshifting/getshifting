@@ -1,0 +1,55 @@
+{
+    "manifestVersion": 1,
+    "id": "GraphEmail",
+    "name": "Send email through Graph",
+    "version": "__build.buildnumber__",
+    "publisher": "__publisher__",
+    "public":__public__,
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "description": "Send an email through Microsoft Graph (without SMTP server)",
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "tags": [
+        "email",
+        "message"
+    ],
+    "icons": {
+        "default": "images/extension-icon.png"
+    },
+    "content": {
+        "details": {
+            "path": "overview.md"
+        }
+    },
+    "files": [
+        {
+            "path": "GraphEmail"
+        }
+    ],
+        "links": {
+        "getstarted": {
+            "uri": "https://wiki.getshifting.com/azuredevopsextensionsendemailgraph"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/getshifting/getshifting"
+    },
+    "contributions": [
+        {
+            "id": "graph-email-build-task",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "GraphEmail"
+            }
+        }
+    ]
+}

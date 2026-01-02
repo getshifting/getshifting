@@ -1,0 +1,142 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: 5m-evaluation
+    folder: Alerts
+    interval: 5m
+    rules:
+      - uid: shiftops-pvc-usage
+        title: shiftops - PVC Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: sum by (persistentvolumeclaim, namespace) (kubelet_volume_stats_used_bytes{namespace=~"shiftops"}/kubelet_volume_stats_capacity_bytes{namespace=~"shiftops"} * 100)
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 80
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 65
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "65"
+          description: "The Persistent Volume Claim {{ printf `{{$labels.persistentvolumeclaim}}` }} in the {{ printf `{{$labels.namespace}}` }} namespace has exceeded 80% of its capacity. Please check the PVC usage and take necessary actions to free up space or expand the volume."
+          summary: |-
+            PVC Usage Alert!
+            Persistent Volume Claim: {{ printf `{{$labels.persistentvolumeclaim}}` }}
+            Namespace: {{ printf `{{$labels.namespace}}` }}
+        labels:
+          severity: critical
+          type: pvc
+        isPaused: false
+  - orgId: 1
+    name: 1h-evaluation
+    folder: Alerts
+    interval: 60m
+    rules:
+      - uid: shiftops-pvc-full
+        title: shiftops - PVC full in 2 days
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: count by (persistentvolumeclaim) ((kubelet_volume_stats_available_bytes{namespace=~"shiftops"})  and  (predict_linear(kubelet_volume_stats_available_bytes{namespace=~"shiftops"}[1d], 2 * 24 * 60 * 60) < 0 ))
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+                  unloadEvaluator:
+                    params:
+                      - 0
+                    type: lt
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 60
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "60"
+          description: "The Persistent Volume Claim {{ printf `{{$labels.persistentvolumeclaim}}` }} in the {{ printf `{{$labels.namespace}}` }} namespace is predicted to run out of space within the next 2 days. Please take necessary actions to free up space or expand the volume."
+          summary: |-
+            A PVC is predicted to run out of space!
+            Persistent Volume Claim: {{ printf `{{$labels.persistentvolumeclaim}}` }}
+            Namespace: {{ printf `{{$labels.namespace}}` }}
+        labels:
+          severity: critical
+          type: pvc
+        isPaused: false

@@ -1,0 +1,155 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558 for the documentation about the tasks.json format
+    // See https://wiki.getshifting.com/vscodetasks for background information and examples
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "Connect to Dev",
+            "detail": "Starts chrome for PIM groups; login to azure; setup the connection to the Bastion in the dev spoke.",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Chrome PIM Groups",
+                "Prepare Bastion",
+                "Bastion Tunnel to Dev"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Prepare Bastion",
+            "type": "shell",
+            "command": [
+                "./.vscode/tasks/bastion-prepare.ps1;"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "Bastion Tunnel to Dev",
+            "type": "shell",
+            "command": [
+                "Write-Host 'Start tunnel to DEVELOPMENT' -ForegroundColor Green;",
+                "az network bastion tunnel --name bas-001 --resource-group rg-bastion --target-resource-id /subscriptions/aa123456-a123-a123-a123-abcd12345678/resourceGroups/rg-cluster/providers/Microsoft.Compute/virtualMachines/vm-jumpbox --resource-port 22 --port 50022;"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "Chrome PIM Groups",
+            "type": "shell",
+            "windows": {
+                "command": "start"
+            },
+            "osx": {
+                "command": "open"
+            },
+            "args": [
+                "C:\\Program Files\\Google\\Chrome\\Application\\chrome 'https://portal.azure.com/?feature.msaljs=true#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadgroup/provider/aadgroup'"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "AKS - Delete all jobs",
+            "type": "shell",
+            "command": [
+                ".vscode/tasks/delete-k8s-jobs.sh"
+            ],
+            "options": {
+                "shell": {
+                    "executable": "C:\\Program Files\\Git\\git-cmd.exe",
+                    "args": [
+                        "--command=usr/bin/bash.exe",
+                        "-l",
+                        "-c"
+                    ]
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "new",
+                "showReuseMessage": true
+            }
+        },
+        {
+            "type": "shell",
+            "label": "Connect to ArgoCD",
+            "detail": "Login to azure; Connect to k8s; Setup port forwarding for argoCD; Start browser.",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Connect K8S",
+                "Open ArgoCD",
+                "Port Forward to ArgoCD"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Connect K8S",
+            "type": "shell",
+            "command": [
+                "echo 'Login to azure';",
+                "az logout;",
+                "az login;",
+                "echo 'Set the subscription';",
+                "az account set --subscription aa123456-a123-a123-a123-abcd12345678;",
+                "az account show;",
+                "echo 'Get AKS credentials';",
+                "az aks get-credentials --resource-group rg-cluster --name aks-cluster --overwrite-existing;",
+                "echo 'Use kubelogin plugin for authentication';",
+                "kubelogin convert-kubeconfig -l azurecli;",
+                "echo 'You can now close this and continue using the K8S plugin to connect to k8s or start a new terminal to work on the commandline.'"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "Port Forward to ArgoCD",
+            "type": "shell",
+            "command": [
+                "Write-Host 'ArgoCD User: admin';",
+                "kubectl get secret argocd-initial-admin-secret --namespace ops -o json | ConvertFrom-Json | select -ExpandProperty data | % { $_.PSObject.Properties | % { $_.Name + [System.Environment]::NewLine + [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_.Value)) + [System.Environment]::NewLine + [System.Environment]::NewLine } };",
+                "Write-Host 'ArgoCD Port: 8080';",
+                "kubectl port-forward deployment/argo-cd-argocd-server 8080 --namespace ops"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "Open ArgoCD",
+            "type": "shell",
+            "windows": {
+                "command": "start"
+            },
+            "osx": {
+                "command": "open"
+            },
+            "args": [
+                "http://localhost:8080"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
