@@ -1,0 +1,30 @@
+{
+    "recommendations": [
+        // Azure
+        "ms-azuretools.vscode-bicep", // Azure BICEP
+        "ms-azure-devops.azure-pipelines", // Azure pipelines
+        "ms-vscode.azurecli", // Azure CLI
+        // Docker
+        "ms-azuretools.vscode-docker", // Docker
+        // Formatting
+        "esbenp.prettier-vscode", // Default formatting - note that prettier can try to be very persuasive. Use save without formatting when required.
+        // Git
+        "niclasvaneyk.am-i-behind", // Checks for commits in remote repo
+        "mhutchie.git-graph", // Git graph
+        "eamodio.gitlens", // Git Lens
+        // Markdown
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint", // markdown linter
+        "ni.azdo-wiki-md", // enables support for Azure DevOps table of content [[_TOC_]]
+        // Misc
+        "gruntfuggly.todo-tree", // Add TODO in code
+        "brunnerh.insert-unicode", // Insert Unicode
+        // Powershell
+        "ms-vscode.powershell", // Powershell
+        // Python
+        "ms-python.python", // Python
+        "ms-python.black-formatter", // Python formatter
+        // Terraform
+        "hashicorp.terraform" // Terraform
+    ]
+}

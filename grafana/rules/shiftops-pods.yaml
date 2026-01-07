@@ -1,0 +1,356 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: 5m-evaluation
+    folder: Alerts
+    interval: 5m
+    rules:
+      - uid: shiftops-cpu-throttling
+        title: shiftops - CPU Throttling
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: sum(increase(container_cpu_cfs_throttled_periods_total{namespace="shiftops", pod=~".+", container!=""}[$__rate_interval])) by (pod, container) /sum(increase(container_cpu_cfs_periods_total{namespace="shiftops", pod=~".+", container!=""}[$__rate_interval])) by (pod, container)
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              settings:
+                mode: dropNN
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.7
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 30
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "30"
+          description: "This Container \n{{ printf `{{ $labels.container }}` }} \nin Pod \n{{ printf `{{$labels.namespace}}` }}/{{ printf `{{$labels.pod}}` }}\nhas reached the CPU limit and it is throttling now, please check on AKS the status of the pods."
+          summary: |-
+            CPU is throttling!
+            Pod: {{ printf `{{$labels.pod}}` }}
+            Environment: {{ printf `{{$labels.namespace}}` }}
+        labels:
+          severity: critical
+          type: cpu
+        isPaused: false
+      - uid: shiftops-memory-limit
+        title: shiftops - Memory limit reached
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: sum by(pod, container) (kube_pod_container_resource_limits{namespace="shiftops", resource="memory"}) - sum by(pod, container) (container_memory_working_set_bytes{namespace="shiftops", container!="", image!=""})
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 19
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "13"
+          description: "This Container \n{{ printf `{{ $labels.container }}` }} \nin Pod \n{{ printf `{{$labels.namespace}}` }}/{{ printf `{{$labels.pod}}` }}\nhas reached the memory limit, please check on AKS the status of the pods."
+          summary: "Memory Limit reached! \nPod: {{ printf `{{$labels.pod}}` }}\nEnvironment: {{ printf `{{$labels.namespace}}` }}"
+        labels:
+          severity: critical
+        isPaused: false
+  - orgId: 1
+    name: 1m-evaluation
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: shiftops-pod-restarted
+        title: shiftops - Restarted Pod
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: increase(kube_pod_container_status_restarts_total{namespace="shiftops"}[10m]) > 0
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 21600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 37
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "37"
+          description: "This Container \n{{ printf `{{ $labels.container }}` }} \nin Pod \n{{ printf `{{$labels.namespace}}` }}/{{ printf `{{$labels.pod}}` }}\nhas been restarted, please check on AKS or with kubectl the logs and describe the pod for more information"
+          summary: |-
+            A Pod has been restarted!
+            Pod: {{ printf `{{$labels.pod}}` }}
+            Environment: {{ printf `{{$labels.namespace}}` }}
+        labels:
+          severity: critical
+          status: restarting
+          type: pod
+        isPaused: false
+      - uid: shiftops-pod-pending
+        title: shiftops - Pending Pod
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: changes(kube_pod_status_phase{namespace="shiftops", phase="Pending"}[10m]) > 0
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 38
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "38"
+          description: "This Container \n{{ printf `{{ $labels.container }}` }} \nin Pod \n{{ printf `{{$labels.namespace}}` }}/{{ printf `{{$labels.pod}}` }}\nstatus is on Pending, please check on AKS or with kubectl the logs and describe the pod for more information"
+          summary: |-
+            A Pod is Pending!
+            Pod: {{ printf `{{$labels.pod}}` }}
+            Environmen: {{ printf `{{$labels.namespace}}` }}
+        labels:
+          severity: critical
+          status: pending
+          type: pod
+        isPaused: false
+      - uid: shiftops-pod-error
+        title: shiftops - Pod error
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: (kube_pod_container_status_terminated_reason{namespace="shiftops", reason="Error"})
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        dashboardUid: shift-aks-resources
+        panelId: 36
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          __dashboardUid__: shift-aks-resources
+          __panelId__: "36"
+          description: "The container {{ printf `{{$labels.container}}` }} in Pod {{ printf `{{$labels.namespace}}` }}/{{ printf `{{$labels.pod}}` }} has failed with reason: {{ printf `{{$labels.reason}}` }}. Please check the logs and describe the pod using kubectl for more information."
+          summary: |-
+            A Pod has an error!
+            Pod: {{ printf `{{$labels.pod}}` }}
+            Namespace: {{ printf `{{$labels.namespace}}` }}
+        labels:
+          severity: critical
+          status: error
+          type: pod
+        isPaused: false

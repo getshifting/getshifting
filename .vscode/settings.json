@@ -1,0 +1,128 @@
+// https://code.visualstudio.com/docs/getstarted/settings#_workspace-settings
+// When having formatting issues: CTRL + SHIFT + P -> SAVE WITHOUT FORMATTING
+{
+    "editor.rulers": [
+        {
+            "color": "#c58414",
+            "column": 100
+        },
+        {
+            "color": "#ab0707",
+            "column": 120
+        }
+    ],
+    "editor.codeActionsOnSave": {
+        "source.fixAll.markdownlint": "explicit"
+    },
+    "editor.defaultFormatter": null,
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.renderWhitespace": "all",
+    "editor.renderControlCharacters": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "files.eol": "\n",
+    "files.associations": {
+        "*.md": "markdown",
+        "**/*.yml": "azure-pipelines",
+        "*.json": "json",
+        "*.xml": "xml",
+        "*.nuspec": "xml",
+        "*.config": "xml",
+        "*.sql": "sql",
+        "**/drafts/*.txt": "dokuwiki",
+        "*.tf": "terraform",
+        "*.tfvars": "terraform-vars"
+    },
+    "[azure-pipelines]": {
+        // no format, keep outlined comments and variables
+        "editor.formatOnSave": false,
+        "editor.formatOnPaste": false
+        //"editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[dokuwiki]": {
+        "editor.defaultFormatter": "kirozen.dokuwiki",
+        "editor.detectIndentation": false,
+        "editor.tabSize": 2
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true
+    },
+    "[terraform]": {
+        "editor.defaultFormatter": "hashicorp.terraform"
+    },
+    "[terraform-vars]": {
+        "editor.defaultFormatter": "hashicorp.terraform"
+    },
+    "files.autoSave": "off",
+    "git.autofetch": true,
+    "markdown.extension.tableFormatter.normalizeIndentation": true,
+    "markdown.extension.orderedList.autoRenumber": false,
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "bash",
+            "args": ["--login"],
+            "overrideName": true
+        }
+    },
+    "window.title": "${folderName}",
+    // bhughes339.replacerules: Press Ctrl+Alt+R and select the rule you'd like to run across your selection or document. Alternatively, open the Command Palette (Ctrl+Shift+P) and select Replace Rules: Run Rule
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions
+    "replacerules.rules": {
+        "Add an empty line below a header": {
+            "find": "^(.*)=$\n(\\S)",
+            "replace": "$1=\n\n$2"
+        },
+        "Add an empty line above a header": {
+            "find": "(\\S)\n^(.*)=$",
+            "replace": "$1\n\n$2="
+        },
+        "Replace creole list two levels": {
+            "find": "^\\*\\* (.*)$",
+            "replace": "  * $1",
+        },
+        "Replace creole list three levels": {
+            "find": "^\\*\\*\\* (.*)$",
+            "replace": "    * $1",
+        },
+        "Add imagebox to images": {
+            "find": "^\\{\\{(.*[jpg|png|gif])\\}\\}",
+            "replace": "[{{$1}}]",
+        },
+        "Replace arrow with regular characters": {
+            "find": "→",
+            "replace": "->",
+        }
+    },
+    "replacerules.rulesets": {
+        "Dokuwiki formatting": {
+            "rules": [
+                "Add an empty line below a header",
+                "Add an empty line above a header",
+                "Replace creole list two levels",
+                "Replace creole list three levels",
+                "Add imagebox to images",
+                "Replace arrow with regular characters"
+            ]
+        }
+    },
+    "emeraldwalk.runonsave": {
+        // Messages to show before & after all commands
+        "message": "*** All Start ***",
+        "messageAfter": "*** All Complete ***",
+        // Show elappsed time for all commands
+        "showElapsed": true,
+        "commands": [
+            {
+                "match": "\\.txt$",
+                "notMatch": "\\drafts/.*$",
+                "cmd": "pwsh.exe -ExecutionPolicy Bypass -File ${workspaceFolder}\\ads\\Add-AdsToWikiPages.ps1"
+            }
+        ]
+    }
+}

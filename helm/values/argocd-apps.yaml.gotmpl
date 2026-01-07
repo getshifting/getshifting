@@ -1,0 +1,96 @@
+# -- Deploy Argo CD Applications within this helm release
+# @default -- `[]` (See [values.yaml])
+## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/
+## Ref: https://github.com/argoproj/argo-helm/tree/main/charts/argocd-apps
+applications:
+  - name: {{ .Release.Namespace }}
+    namespace: {{ .Release.Namespace }}
+    project: {{ .Values.operations.argocd.projectPrefix }}{{ .Release.Namespace | replace .Values.namespacePrefix "" }}
+    source:
+      directory:
+        recurse: true
+        {{- if .Values.operations.argocd.excludeOps }}
+        exclude: {{ .Values.operations.argocd.excludeOps }}
+        {{- end }}
+      path: gitops/{{ .Release.Namespace | replace .Values.namespacePrefix "" }}-{{ join "" (.Values.operations.neighborEnvironments | get .Environment.Name list) }}
+      repoURL: {{ .Values.operations.argocd.repoUrl }}
+      {{- if hasKey .Values.operations.argocd "targetRevisionOps" }}
+      targetRevision: {{ .Values.operations.argocd.targetRevisionOps }}
+      {{- else if hasKey .Values.operations.argocd "targetRevision" }}
+      targetRevision: {{ .Values.operations.argocd.targetRevision }}
+      {{- else }}
+      targetRevision: {{ .Release.Namespace | replace .Values.namespacePrefix "" }}{{ .Values.operations.argocd.targetRevisionSuffix }}
+      {{- end }}
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: {{ .Release.Namespace }}
+    syncPolicy:
+      syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+      - Retry=true
+      retry:
+        limit: 2
+        backoff:
+          duration: 5s
+          factor: 2
+          maxDuration: 3m
+    revisionHistoryLimit: 5
+{{- range .Values.operations.watchNamespaces }}
+  - name: {{ . }}
+    namespace: {{ $.Release.Namespace }}
+    project: {{ $.Values.operations.argocd.projectPrefix }}{{ . | replace $.Values.namespacePrefix "" }}
+    source:
+      directory:
+        recurse: true
+      path: gitops/{{ . | replace $.Values.namespacePrefix "" }}
+      repoURL: {{ $.Values.operations.argocd.repoUrl }}
+      {{- if $.Values.operations.argocd.targetRevision }}
+      targetRevision: {{ $.Values.operations.argocd.targetRevision }}
+      {{- else }}
+      targetRevision: {{ . | replace $.Values.namespacePrefix "" }}{{ $.Values.operations.argocd.targetRevisionSuffix }}
+      {{- end }}
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: {{ . }}
+    syncPolicy:
+      syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+    revisionHistoryLimit: 5
+{{- end }}
+projects:
+  - name: {{ .Values.operations.argocd.projectPrefix }}{{ .Release.Namespace | replace .Values.namespacePrefix "" }}
+    namespace: {{ .Release.Namespace }}
+    description: "Project for the {{ .Release.Namespace }} namespace"
+    destinations:
+      - namespace: '*'
+        server: https://kubernetes.default.svc
+    sourceRepos:
+    - {{ .Values.operations.argocd.repoUrl }}
+    sourceNamespaces:
+    - '*'
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+{{- range .Values.operations.watchNamespaces }}
+  - name: {{ $.Values.operations.argocd.projectPrefix }}{{ . | replace $.Values.namespacePrefix "" }}
+    namespace: {{ $.Release.Namespace }}
+    description: "Project for the {{ . }} namespace"
+    destinations:
+      - namespace: '*'
+        server: https://kubernetes.default.svc
+    sourceRepos:
+    - {{ $.Values.operations.argocd.repoUrl }}
+    sourceNamespaces:
+    - '*'
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+{{- end }}
