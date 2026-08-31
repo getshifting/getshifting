@@ -1,0 +1,70 @@
+name: $(Build.DefinitionName)-$(Build.BuildId)
+appendCommitMessageToRunName: false
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - dokuwiki/pages/*
+    - dokuwiki/media/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+- group: knowledge
+
+stages:
+- stage: uploadtowiki
+  displayName: "Upload to Wiki"
+  condition: always()
+  variables:
+    FtpUser               : "shooft"
+    FtpServer             : "ftp://ftp.getshifting.com"
+    FtpDir                : "/httpdocs/data"
+    LocalDir              : "./dokuwiki"
+
+  jobs:
+  - job: uploadtowiki
+    displayName: "Upload to Wiki"
+    steps:
+    - checkout: self
+
+    - task: FtpUpload@2
+      displayName: FTP Upload pages
+      env:
+        FtpPass: $(FtpPass)
+      inputs:
+        credentialsOption: 'inputs'
+        serverUrl: '$(FtpServer)'
+        username: '$(FtpUser)'
+        password: '$(FtpPass)'
+        rootDirectory: '$(LocalDir)/pages'
+        filePatterns: '*.txt'
+        remoteDirectory: '$(FtpDir)/pages'
+        clean: false
+        cleanContents: false
+        preservePaths: false
+        trustSSL: false
+
+    - task: FtpUpload@2
+      displayName: FTP Upload media
+      env:
+        FtpPass: $(FtpPass)
+      inputs:
+        credentialsOption: 'inputs'
+        serverUrl: '$(FtpServer)'
+        username: '$(FtpUser)'
+        password: '$(FtpPass)'
+        rootDirectory: '$(LocalDir)/media'
+        filePatterns: |
+          *.jpg
+          *.png
+          wiki/*.*
+        remoteDirectory: '$(FtpDir)/media'
+        clean: false
+        cleanContents: false
+        preservePaths: false
+        trustSSL: false

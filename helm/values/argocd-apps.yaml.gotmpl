@@ -1,0 +1,55 @@
+# -- Deploy Argo CD Applications within this helm release
+# @default -- `[]` (See [values.yaml])
+## Ref: https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/
+## Ref: https://github.com/argoproj/argo-helm/tree/main/charts/argocd-apps
+applications:
+  - name: {{ .Release.Namespace }}
+    namespace: {{ .Release.Namespace }}
+    project: {{ .Values.argocd.projectPrefix }}{{ .Release.Namespace | replace .Values.namespacePrefix "" }}
+    source:
+      directory:
+        recurse: true
+        {{- if .Values.argocd.excludeManifests }}
+        exclude: {{ .Values.argocd.excludeManifests }}
+        {{- end }}
+      path: gitopsManifests/{{ .Environment.Name  }}
+      repoURL: {{ .Values.argocd.repoUrl }}
+      {{- if hasKey .Values.argocd "targetRevisionOps" }}
+      targetRevision: {{ .Values.argocd.targetRevisionOps }}
+      {{- else if hasKey .Values.argocd "targetRevision" }}
+      targetRevision: {{ .Values.argocd.targetRevision }}
+      {{- else }}
+      targetRevision: {{ .Release.Namespace | replace .Values.namespacePrefix "" }}{{ .Values.argocd.targetRevisionSuffix }}
+      {{- end }}
+    destination:
+      server: https://kubernetes.default.svc
+      namespace: {{ .Release.Namespace }}
+    syncPolicy:
+      syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+      - Retry=true
+      retry:
+        limit: 2
+        backoff:
+          duration: 5s
+          factor: 2
+          maxDuration: 3m
+    revisionHistoryLimit: 5
+projects:
+  - name: {{ .Values.argocd.projectPrefix }}{{ .Release.Namespace | replace .Values.namespacePrefix "" }}
+    namespace: {{ .Release.Namespace }}
+    description: "Project for the {{ .Release.Namespace }} namespace"
+    destinations:
+      - namespace: '*'
+        server: https://kubernetes.default.svc
+    sourceRepos:
+    - {{ .Values.argocd.repoUrl }}
+    sourceNamespaces:
+    - '*'
+    namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+    clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'

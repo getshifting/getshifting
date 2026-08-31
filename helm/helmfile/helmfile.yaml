@@ -1,0 +1,82 @@
+# The list of environments managed by helmfile.
+environments:
+  tst:
+    values:
+      - gitopsValues/tst.yaml
+  prd:
+    values:
+      - gitopsValues/prd.yaml
+
+values:
+  - gitopsValues/default.yaml
+
+---
+# Chart repositories used from within this state file
+# We have our own internal chart registry (see https://wiki.getshifting.com/helmchartsecretprovider#creating_a_helm_repository_in_azure)
+# And a few public ones for other charts we use
+repositories:
+  - name: getshifting
+    url: {{ .Values.chartRegistry }}
+    oci: true
+  - name: influxdata
+    url: https://helm.influxdata.com
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+
+# The desired states of Helm releases. Using templates for easy reuse of value files.
+templates:
+  release_defaults: &release_defaults
+    missingFileHandler: Warn
+    values:
+      - ../values/{{`{{ .Release.Name }}`}}.yaml*
+
+# The desired states of Helm releases.
+releases:
+  - chart: getshifting/azure-secretprovider
+    name: azure-secretprovider-grafana
+    condition: azure-secretprovider-grafana.enabled
+    namespace: shiftops
+    version: 0.1.0
+    <<: *release_defaults
+  - chart: getshifting/azure-secretprovider
+    name: azure-secretprovider-certificate
+    condition: azure-secretprovider-certificate.enabled
+    namespace: shiftops
+    version: 0.1.0
+    <<: *release_defaults
+  - chart: argo/argocd-apps
+    name: argocd-apps
+    namespace: shiftops
+    version: 1.4.1
+    condition: argocd-apps.enabled
+    <<: *release_defaults
+  - chart: influxdata/influxdb
+    name: influxdb
+    version: 4.12.0
+    condition: influxdb.enabled
+    namespace: shiftapp
+    <<: *release_defaults
+  - chart: prometheus-community/kube-prometheus-stack
+    name: kube-prometheus-stack
+    version: 60.3.0
+    condition: kube-prometheus-stack.enabled
+    namespace: shiftops
+    <<: *release_defaults
+  - chart: grafana/grafana
+    name: grafana
+    version: 9.2.7
+    condition: grafana.enabled
+    namespace: shiftops
+    <<: *release_defaults
+  - chart: ingress-nginx/ingress-nginx
+    name: ingress-nginx
+    version: 4.11.6
+    condition: ingress-nginx.enabled
+    namespace: shiftops
+    <<: *release_defaults

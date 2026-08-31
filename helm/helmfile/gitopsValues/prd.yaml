@@ -1,0 +1,7 @@
+# Production settings for releases
+kube-prometheus-stack:
+  enabled: false
+
+# Helmfile production variables
+argocd:
+  targetRevision: "prd-env"

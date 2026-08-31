@@ -1,0 +1,99 @@
+name: $(Build.DefinitionName)-$(Build.BuildId)
+appendCommitMessageToRunName: false
+
+# Manual steps
+# In Azure DevOps create a Service Connection, as explained here:
+#   https://learn.microsoft.com/en-us/azure/devops/pipelines/library/service-endpoints?view=azure-devops#ssh-service-connection
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - dokuwiki/apache/*
+
+pool:
+  vmImage: "ubuntu-latest"
+
+stages:
+  - stage: uploadtowikiserver
+    displayName: "Upload to Wiki Server"
+    condition: always()
+
+    jobs:
+      - job: uploadtowikiserver
+        displayName: "Upload to Wiki Server"
+        steps:
+          - checkout: self
+
+          - task: Bash@3
+            displayName: "Show variables"
+            inputs:
+              targetType: "inline"
+              script: |
+                echo "Show all variables"
+                printenv
+
+          - task: CopyFilesOverSSH@0
+            displayName: "Upload to Wiki Server"
+            inputs:
+              sshEndpoint: "SSH Wiki" # string. Required. SSH service connection.
+              sourceFolder: "$(System.DefaultWorkingDirectory)/dokuwiki/apache" # string. Source folder.
+              contents: '**' # string. Required. Contents. Default: **.
+              targetFolder: "~/opt/bitnami/apache" # string. Target folder.
+              cleanTargetFolder: true # boolean. Clean target folder. Default: false.
+              cleanHiddenFilesInTarget: true # boolean. Optional. Use when cleanTargetFolder = true. Remove hidden files in target folder. Default: false.
+              readyTimeout: '20000' # string. Required. SSH handshake timeout. Default: 20000.
+              overwrite: true # boolean. Overwrite. Default: true.
+              failOnEmptySource: false # boolean. Fail if no files found to copy. Default: false.
+              flattenFolders: false # boolean. Flatten folders. Default: false.
+              concurrentUploads: '10' # string. Number of concurrent uploads when copying files. Default: 10.
+              delayBetweenUploads: '50' # string. Delay between queueing uploads (in milliseconds). Default: 50.
+
+          - task: SSH@0
+            displayName: "Copy files and restart Apache"
+            inputs:
+              sshEndpoint: "SSH Wiki" # string. Required. SSH service connection.
+              runOptions: 'inline' # 'commands' | 'script' | 'inline'. Required. Run. Default: commands.
+              inline: | # string. Required when runOptions = inline. Inline Script.
+                set -euo pipefail
+                echo "Show repository files"
+                ls -la ~/opt/bitnami/apache
+                echo "Copy all files from home directory to apache directory"
+                sudo cp -rvp ~/opt/bitnami/apache/* /opt/bitnami/apache/
+                echo "Set ownership for apache directory"
+                sudo chown -R daemon:daemon /opt/bitnami/apache/conf
+                sudo chown -R daemon:daemon /opt/bitnami/apache/htdocs
+                echo "Set permissions for apache directory"
+                sudo find /opt/bitnami/apache/conf -type d -exec chmod 755 {} \;
+                sudo find /opt/bitnami/apache/conf -type f -exec chmod 644 {} \;
+                sudo chmod +x /opt/bitnami/apache/conf/botcheck/lookup
+                sudo chmod +x /opt/bitnami/apache/conf/botcheck/update-cloudfront-ips.sh
+                sudo chmod +x /opt/bitnami/apache/conf/botcheck/update-bot-addresses.sh
+                sudo find /opt/bitnami/apache/htdocs -type d -exec chmod 755 {} \;
+                sudo find /opt/bitnami/apache/htdocs -type f -exec chmod 644 {} \;
+                echo "Update cloudfront IPs"
+                sudo /opt/bitnami/apache/conf/botcheck/update-cloudfront-ips.sh
+                echo "Update bot addresses"
+                sudo /opt/bitnami/apache/conf/botcheck/update-bot-addresses.sh
+                echo "Restart apache"
+                sudo /opt/bitnami/ctlscript.sh restart apache
+                echo "Wait for 10 seconds"
+                sleep 10
+                echo "Check if apache is responding"
+                # -s = silent (no progress meter)
+                # -S = show errors even in silent mode
+                # -f = fail on HTTP errors (4xx, 5xx status codes)
+                # -I = HEAD request only
+                curl -sSfI http://localhost || echo "##vso[task.logissue type=error]Apache is not responding."
+                echo "Install systemd timers for IP address update scripts"
+                sudo cp /opt/bitnami/apache/systemd/update-bot-addresses.service /etc/systemd/system/
+                sudo cp /opt/bitnami/apache/systemd/update-bot-addresses.timer /etc/systemd/system/
+                sudo cp /opt/bitnami/apache/systemd/update-cloudfront-ips.service /etc/systemd/system/
+                sudo cp /opt/bitnami/apache/systemd/update-cloudfront-ips.timer /etc/systemd/system/
+                sudo systemctl daemon-reload
+                sudo systemctl enable --now update-bot-addresses.timer 2>&1
+                sudo systemctl enable --now update-cloudfront-ips.timer 2>&1
+              interpreterCommand: '/bin/bash' # string. Optional. Use when runOptions = inline. Interpreter command. Default: /bin/bash.
+              readyTimeout: '20000' # string. Required. SSH handshake timeout. Default: 20000.

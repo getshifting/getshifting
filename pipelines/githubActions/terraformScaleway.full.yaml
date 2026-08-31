@@ -1,0 +1,131 @@
+name: Scaleway Terraform App
+
+# For more infomation on this workflow, see: https://wiki.getshifting.com/scalewaygithubactions
+
+run-name: "Action: ${{ github.event.inputs.action }}"
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        description: "Action"
+        required: true
+        default: "plan"
+        options:
+          - Initialize remote
+          - plan
+          - apply
+          - destroy
+permissions:
+  contents: read
+env:
+  workingDirectory: "./terraform/apps/scwPrivateK8s"
+  stateBucket: "tf-state-ams"
+  stateRegion: "nl-ams"
+  stateEndpoint: "https://s3.nl-ams.scw.cloud"
+  SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+  SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  SCW_DEFAULT_PROJECT_ID: ${{ secrets.SCW_PROJECT_ID }}
+  SCW_DEFAULT_ORGANIZATION_ID: ${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  AWS_DEFAULT_REGION: "nl-ams"
+
+jobs:
+  initialize_remote:
+    name: Initialize Remote
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'Initialize remote'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Ensure state bucket exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if aws s3api head-bucket --endpoint-url=${{ env.stateEndpoint }} --bucket ${{ env.stateBucket }} 2>/dev/null; then
+            echo "Bucket ${{ env.stateBucket }} already exists"
+          else
+            echo "Creating bucket ${{ env.stateBucket }}"
+            aws s3 mb s3://${{ env.stateBucket }} --endpoint-url=${{ env.stateEndpoint }} --region ${{ env.stateRegion }}
+          fi
+          echo "Enabling versioning"
+          aws s3api put-bucket-versioning --endpoint-url=${{ env.stateEndpoint }} \
+            --bucket ${{ env.stateBucket }} \
+            --versioning-configuration Status=Enabled
+          echo "Enabling lifecycle rule to delete non-current versions after 30 days"
+          aws s3api put-bucket-lifecycle-configuration --endpoint-url=${{ env.stateEndpoint }} \
+            --bucket ${{ env.stateBucket }} \
+            --lifecycle-configuration '{
+              "Rules": [
+                {
+                  "ID": "DeleteNonCurrentVersions",
+                  "Status": "Enabled",
+                  "NoncurrentVersionExpiration": {
+                    "NoncurrentDays": 30
+                  }
+                }
+              ]
+            }'
+
+  plan_apply:
+    name: Terraform Action
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply' || github.event.inputs.action == 'destroy'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Terraform init
+        working-directory: ${{ env.workingDirectory }}
+        run: |
+          terraform version
+          terraform init \
+            -backend-config=bucket=${{ env.stateBucket }} \
+            -backend-config=key=terraform.tfstate \
+            -backend-config=region=${{ env.stateRegion }} \
+            -backend-config=endpoints={\"s3\":\"${{ env.stateEndpoint }}\"} \
+            -backend-config=skip_credentials_validation=true \
+            -backend-config=skip_region_validation=true \
+            -backend-config=skip_metadata_api_check=true \
+            -backend-config=skip_requesting_account_id=true \
+            -backend-config=use_path_style=true
+
+      - name: Terraform plan
+        working-directory: ${{ env.workingDirectory }}
+        if: github.event.inputs.action == 'plan'
+        run: |
+          terraform plan \
+            -var="project_id=${{ secrets.SCW_PROJECT_ID }}" \
+            -var="organization_id=${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}" \
+            -var="public_key=${{ secrets.SCW_PUBLIC_KEY }}" \
+            -input=false \
+            -compact-warnings
+
+      - name: Terraform apply
+        working-directory: ${{ env.workingDirectory }}
+        if: github.event.inputs.action == 'apply'
+        run: |
+          terraform apply \
+            -var="project_id=${{ secrets.SCW_PROJECT_ID }}" \
+            -var="organization_id=${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}" \
+            -var="public_key=${{ secrets.SCW_PUBLIC_KEY }}" \
+            -input=false \
+            -compact-warnings \
+            -auto-approve
+
+      - name: Terraform destroy
+        working-directory: ${{ env.workingDirectory }}
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          terraform destroy \
+            -var="project_id=${{ secrets.SCW_PROJECT_ID }}" \
+            -var="organization_id=${{ secrets.SCW_DEFAULT_ORGANIZATION_ID }}" \
+            -var="public_key=${{ secrets.SCW_PUBLIC_KEY }}" \
+            -input=false \
+            -compact-warnings \
+            -auto-approve

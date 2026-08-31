@@ -1,0 +1,59 @@
+🎉 Successfully installed {{ .Chart.Name }} v{{ .Chart.Version }}!
+
+RBAC permissions have been configured for the following groups:
+
+{{- if .Values.clusterRoleBindings }}
+{{- range .Values.clusterRoleBindings }}
+✅ ClusterRoleBinding: {{ .name }}
+   Group: {{ .groupName }}
+   ClusterRole: {{ .clusterRole }}
+   Scope: Cluster-wide
+{{- if .description }}
+   Description: {{ .description }}
+{{- end }}
+
+{{- end }}
+{{- end }}
+
+{{- if .Values.roleBindings }}
+{{- range .Values.roleBindings }}
+✅ RoleBinding: {{ .name }}
+   Group: {{ .groupName }}
+   ClusterRole: {{ .clusterRole }}
+   Namespaces: {{ join ", " .namespaces }}
+{{- if .description }}
+   Description: {{ .description }}
+{{- end }}
+
+{{- end }}
+{{- end }}
+
+📋 To verify your installation:
+
+# Check ClusterRoleBindings:
+kubectl get clusterrolebindings {{ range .Values.clusterRoleBindings }}{{ .name }} {{ end }}
+
+# Check RoleBindings:
+{{- range .Values.roleBindings }}
+{{- $roleBinding := . }}
+{{- range .namespaces }}
+kubectl get rolebindings {{ $roleBinding.name }} -n {{ . }}
+{{- end }}
+{{- end }}
+
+# View detailed RBAC configuration:
+{{- range .Values.clusterRoleBindings }}
+kubectl describe clusterrolebinding {{ .name }}
+{{- end }}
+{{- range .Values.roleBindings }}
+{{- $roleBinding := . }}
+{{- range .namespaces }}
+kubectl describe rolebinding {{ $roleBinding.name }} -n {{ . }}
+{{- end }}
+{{- end }}
+
+💡 Need to modify permissions? Update your values.yaml file and run:
+   helm upgrade {{ .Release.Name }} {{ .Chart.Name }}
+
+📚 For more information about Kubernetes RBAC:
+   https://kubernetes.io/docs/reference/access-authn-authz/rbac/

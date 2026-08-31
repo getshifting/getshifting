@@ -1,0 +1,33 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name:  test-alpine-busybox-curl
+spec:
+  restartPolicy: Never
+  containers:
+    - name: alpine
+      image: docker.io/library/alpine:3.23.3
+      command:
+        - /bin/sh
+      args:
+        - "-c"
+        - "-e"
+        - |-
+          apk update
+          apk add --no-cache curl busybox-extras bash
+          echo ""
+          echo "Example commands to use:"
+          echo "Verify outgoing IP address: curl -s https://ipinfo.io/ip"
+          echo "Check DNS resolution:       nslookup example.com"
+          echo ""
+          echo "Check k8s backend service:"
+          echo "Check service DNS:          nslookup <service-name>.<namespace>.svc.cluster.local"
+          echo "Check service response:     curl -v http://<service-name>"
+          sleep infinity
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi

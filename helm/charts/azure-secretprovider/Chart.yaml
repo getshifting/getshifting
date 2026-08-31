@@ -1,0 +1,7 @@
+apiVersion: v2
+name: azure-secretprovider
+description: A Helm chart for a secretprovider on AKS with workload identity enabled
+type: application
+appVersion: "1.16.0"
+version: 0.1.0
+icon: https://github.com/getshifting/getshifting/images/shift-256x213.png

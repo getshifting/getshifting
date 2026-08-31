@@ -1,0 +1,25 @@
+# Default settings for releases
+azure-secretprovider-grafana:
+  enabled: true
+azure-secretprovider-certificate:
+  enabled: true
+argocd-apps:
+  enabled: true
+influxdb:
+  enabled: true
+kube-prometheus-stack:
+  enabled: true
+grafana:
+  enabled: true
+ingress-nginx:
+  enabled: false
+
+# Helmfile global variables
+chartRegistry: acrshift.azurecr.io/helm
+dockerRegistry: acrshift.azurecr.io/docker
+imagePullSecrets: []
+namespacePrefix: shift
+argocd:
+  projectPrefix: shift-
+  repoUrl: https://github.com/getshifting/getshifting.git
+  excludeManifests: ""

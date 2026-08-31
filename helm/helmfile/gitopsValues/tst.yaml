@@ -1,0 +1,9 @@
+# Test settings for releases
+grafana:
+  enabled: false
+kube-prometheus-stack:
+  enabled: false
+
+# Helmfile test variables
+argocd:
+  targetRevision: "tst-env"

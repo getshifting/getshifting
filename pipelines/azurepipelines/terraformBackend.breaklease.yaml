@@ -1,0 +1,34 @@
+parameters:
+  subscription: ""
+
+steps:
+- task: AzureCLI@2
+  displayName:  'Terraform Break Lease'
+  condition: eq(variables['Agent.JobStatus'], 'Canceled')
+  inputs:
+    azureSubscription: '$(AzureServiceConnection)'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      # This step will only run if one of the previous steps was canceled. This might leave the state file locked.
+      # This step will break the lease on the state file.
+      # In case this fails, the manual way is to go to the storage account -> Containers -> terraform
+      #    -> Select the ${{ parameters.environment }}.tfstate file -> Break lease
+      set -euo pipefail
+      az account set --subscription ${{ parameters.subscription }}
+
+      # Get storage access key
+      AZURE_STORAGE_KEY=$(az storage account keys list \
+          --account-name $(backendSA) \
+          --resource-group $(backendRG) \
+          --query "[0].value" \
+          --output tsv
+      )
+
+      # Break the lease on the state file if it exists
+      az storage blob lease break \
+        --container-name $(backendSAC) \
+        --blob-name $(backendStatefile) \
+        --account-key $AZURE_STORAGE_KEY \
+        --account-name $(backendSA) || true
+    workingDirectory: $(workingDirectory)

@@ -1,0 +1,75 @@
+---
+# Source: aks-permissions/templates/roles.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nodes-viewer
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: aks-permissions/templates/roles.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crd-viewer
+rules:
+# Access to Custom Resource Definitions
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch"]
+# ArgoCD custom resources
+- apiGroups: ["argoproj.io"]
+  resources: ["applications", "applicationsets", "appprojects"]
+  verbs: ["get", "list", "watch"]
+# Postgres custom resources
+- apiGroups: ["postgres.cnpg.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# sec-devops: cluster-admin in ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-devops
+subjects:
+- kind: Group
+  name: 780741a1-18ca-411c-89d5-252be095bc16
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# sec-data: cluster-admin in ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-data
+subjects:
+- kind: Group
+  name: 94eae29e-a16b-4949-8acc-3196d013c295
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# sec-developers: edit in RoleBinding to app1
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-edit
+  namespace: app1
+subjects:
+- kind: Group
+  name: cb556108-a2d9-45ca-a1ee-4ac20bfe1f59
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io

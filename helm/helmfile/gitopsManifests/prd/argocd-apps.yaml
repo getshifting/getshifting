@@ -1,0 +1,53 @@
+---
+# Source: argocd-apps/templates/projects.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shift-ops
+  namespace: shiftops
+spec:
+  description: Project for the shiftops namespace
+  sourceRepos:
+    - https://github.com/getshifting/getshifting.git
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  sourceNamespaces:
+    - '*'
+---
+# Source: argocd-apps/templates/applications.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shiftops
+  namespace: shiftops
+spec:
+  project: shift-ops
+  source:
+    directory:
+      recurse: true
+    path: gitopsManifests/prd
+    repoURL: https://github.com/getshifting/getshifting.git
+    targetRevision: prd-env
+  destination:
+    namespace: shiftops
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    retry:
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+      limit: 2
+    syncOptions:
+    - ServerSideApply=true
+    - CreateNamespace=true
+    - Retry=true
+  revisionHistoryLimit: 5
+

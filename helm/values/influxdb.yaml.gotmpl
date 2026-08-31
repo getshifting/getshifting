@@ -1,0 +1,83 @@
+image:
+  repository: {{ .Values.dockerRegistry }}/influxdb/influxdb
+  tag: "1.8.10-alpine"
+  {{- with .Values.imagePullSecrets }}
+  pullSecrets:
+    {{- range . }}
+    - {{ .name }}
+    {{- end }}
+  {{- end }}
+
+tolerations:
+  - key: "pool"
+    operator: "Equal"
+    value: "mobile"
+    effect: "NoSchedule"
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.azure.com/mode
+              operator: NotIn
+              values:
+                - system
+
+podLabels:
+  azure.workload.identity/use: "true"
+
+config:
+  data:
+    max-values-per-tag: 0
+    max-series-per-database: 0
+
+resources:
+  limits:
+    memory: 16Gi
+  requests:
+    cpu: "800m"
+    memory: 15Gi
+
+env:
+  - name: GOMEMLIMIT
+    value: 16GiB
+
+persistence:
+  enabled: true
+  ## A manually managed Persistent Volume and Claim
+  ## Requires persistence.enabled: true
+  ## If defined, PVC must be created manually before volume will be bound
+  # existingClaim:
+  ## influxdb data Persistent Volume Storage Class
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  # storageClass: "-"
+  annotations: {}
+  accessMode: ReadWriteOnce
+  size: 64Gi
+
+backup:
+  enabled: true
+  schedule: 0 0 * * *
+  azure:
+    destination_container: influxdb-backups
+    destination_path: ""
+    storageAccountSecret: influxdb-azurestorage
+
+volumes:
+  - csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: azure-secretprovider-influxdb
+    name: secrets-store-inline
+
+mountPoints:
+  - mountPath: /mnt/secrets-store
+    name: secrets-store-inline
+    readOnly: true

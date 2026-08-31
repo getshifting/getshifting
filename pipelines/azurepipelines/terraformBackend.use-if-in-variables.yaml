@@ -1,0 +1,278 @@
+name: $(Build.DefinitionName)-$(Build.BuildId)
+appendCommitMessageToRunName: false
+
+trigger: none
+
+pr: none
+
+parameters:
+  - name: action
+    displayName: Action
+    type: string
+    default: 'Plan'
+    values:
+    - Initialize remote
+    - Plan
+    - Apply
+    - Fix
+    - Destroy DRC
+  - name: environment
+    displayName: Environment
+    type: string
+    default: 'dev'
+    values:
+    - dev
+    - tst
+    - acc
+    - prd
+    - drc
+  - name: subscriptions
+    displayName: Subscriptions
+    type: object
+    default:
+      dev: 1cbb87bb-4a3b-44de-ab83-dc1065cac97c
+      tst: 8515e830-944d-4fa3-9403-55ad2b8eb529
+      acc: 1cf86f1e-fc53-4349-aae9-606e520064e3
+      prd: 729850cf-be3a-4d7f-b4b4-865e1bae2293
+      drc: 30b3c71d-a123-a123-a123-abcd12345678
+  - name: location
+    displayName: Location
+    type: string
+    default: 'westeurope'
+    values:
+    - westeurope
+    - northeurope
+  - name: loc
+    displayName: Short Location
+    type: object
+    default:
+      westeurope: euw
+      northeurope: eun
+
+variables:
+  - name: AzureServiceConnection
+    value: arm-shift
+  - name: backendRG
+    ${{ if in( parameters['environment'], 'dev', 'tst', 'acc', 'prd') }}:
+      value: rg-${{ parameters.loc[parameters.location] }}-shift-${{ parameters.environment }}-deployment
+    ${{ if eq( parameters['environment'], 'drc') }}:
+      value: rg-drc-deployment
+  - name: backendSA
+    ${{ if in( parameters['environment'], 'dev', 'tst', 'acc', 'prd') }}:
+      value: sa${{ parameters.loc[parameters.location] }}shift${{ parameters.environment }}deployment
+    ${{ if eq( parameters['environment'], 'drc') }}:
+      value: sadrcdeployment
+  - name: backendSAC
+    value: terraform
+  - name: backendStatefile
+    value: ${{ parameters.environment }}.tfstate
+  - name: workingDirectory
+    value: $(System.DefaultWorkingDirectory)/tf/applications/app
+  - name: action
+    value: ${{ parameters.action }}
+
+pool:
+  vmImage: "ubuntu-latest"
+
+resources:
+  repositories:
+    - repository: shiftOps
+      type: github
+      endpoint: github-connection
+      name: GetShifting/shift-gitops
+
+stages:
+  - stage: initialize_remote
+    displayName: 'Initialize Terraform Remote Backend'
+    condition: eq('${{ parameters.action }}', 'Initialize remote')
+    jobs:
+      - job: initialize_remote
+        displayName: 'Initialize Terraform Remote Backend'
+        steps:
+          - task: AzureCLI@2
+            displayName: Ensure storage account and container for storing state
+            inputs:
+              azureSubscription: '$(AzureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+                az account set --subscription ${{ parameters.subscriptions[parameters.environment] }}
+                case ${{ parameters.environment }} in
+                  'dev')
+                    envTag=Development
+                    locationSA=westeurope
+                    ;;
+                  'tst')
+                    envTag=Test
+                    locationSA=westeurope
+                    ;;
+                  'acc')
+                    envTag=Acceptance
+                    locationSA=westeurope
+                    ;;
+                  'prd')
+                    envTag=Production
+                    locationSA=westeurope
+                    ;;
+                  'drc')
+                    envTag=DisasterRecovery
+                    locationSA=northeurope
+                    ;;
+                esac
+                echo "##[section]Create storage account"
+                az storage account create \
+                  --name $(backendSA) \
+                  --resource-group $(backendRG) \
+                  --location $locationSA \
+                  --sku Standard_LRS \
+                  --min-tls-version TLS1_2 \
+                  --https-only true \
+                  --allow-blob-public-access false \
+                  --tags environment=$envTag company="GetShifting"
+                echo "##[section]Create storage container"
+                az storage container create \
+                  --name $(backendSAC) \
+                  --account-name $(backendSA)
+                echo "##[section]Enabling container soft delete"
+                az storage account blob-service-properties update \
+                  --enable-container-delete-retention true \
+                  --container-delete-retention-days 180 \
+                  --account-name $(backendSA) \
+                  --resource-group $(backendRG)
+                echo "##[section]Enabling blob soft delete"
+                az extension add -n storage-preview
+                az storage fs service-properties update \
+                  --account-name $(backendSA) \
+                  --delete-retention \
+                  --delete-retention-period 180
+                echo "##[section]Set a resource lock on the storage account"
+                az lock create \
+                  --name "LockStorageAccount" \
+                  --lock-type CanNotDelete \
+                  --resource-group $(backendRG) \
+                  --resource $(backendSA) \
+                  --resource-type "Microsoft.Storage/storageAccounts" \
+                  --notes "This lock is to prevent accidental deletion of the storage account of the terraform state file"
+                # In production, set the redundancy to GRS
+                if [ ${{ parameters.environment }} == 'prd' ]; then
+                  echo "##[section]Set redundancy to GRS"
+                  az storage account update \
+                    --name $(backendSA) \
+                    --resource-group $(backendRG) \
+                    --sku Standard_GRS
+                fi
+
+  - stage: terraform_plan_apply
+    displayName: 'Terraform Plan or Apply'
+    condition: and(
+      or(
+        contains('${{ parameters.action }}', 'Plan'),
+        contains('${{ parameters.action }}', 'Apply')),
+      ne('${{ parameters.environment }}', 'drc'),
+      eq('${{ parameters.location }}', 'westeurope'))
+    jobs:
+      - job: terraform_plan_apply
+        displayName: 'Terraform Plan or Apply'
+        timeoutInMinutes: 0
+        steps:
+          - template: deploy/terraformBackend.init.yaml
+            parameters:
+              subscription: ${{ parameters.subscriptions[parameters.environment] }}
+
+          - task: AzureCLI@2
+            displayName: 'Terraform Plan'
+            condition: and(succeeded(), eq(variables['action'], 'Plan'))
+            inputs:
+              azureSubscription: '$(AzureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+                az account set --subscription ${{ parameters.subscriptions[parameters.environment] }}
+                terraform plan \
+                  -var-file=env/${{ parameters.environment }}.tfvars \
+                  -input=false \
+                  -compact-warnings
+              workingDirectory: $(workingDirectory)
+
+          - task: AzureCLI@2
+            displayName:  'Terraform Apply'
+            condition: and(succeeded(), eq(variables['action'], 'Apply'))
+            timeoutInMinutes: 180
+            inputs:
+              azureSubscription: '$(AzureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az account set --subscription ${{ parameters.subscriptions[parameters.environment] }}
+                terraform apply \
+                  -var-file=env/${{ parameters.environment }}.tfvars \
+                  -compact-warnings \
+                  -input=false \
+                  -auto-approve
+              workingDirectory: $(workingDirectory)
+
+          - template: deploy/terraformBackend.breaklease.yaml
+            parameters:
+              subscription: ${{ parameters.subscriptions[parameters.environment] }}
+
+  # The terraform fix stage is used to fix issues with terraform and allows for extra terraform
+  #   commands to be run, like terraform import
+  - stage: terraform_fix
+    displayName: 'Terraform Fix'
+    condition: eq('${{ parameters.action }}', 'Fix')
+    dependsOn: initialize_remote
+    jobs:
+      - job: terraform_fix
+        displayName: 'Terraform Fix'
+        steps:
+          - template: deploy/terraformBackend.init.yaml
+            parameters:
+              subscription: ${{ parameters.subscriptions[parameters.environment] }}
+
+          - task: AzureCLI@2
+            displayName: 'Terraform State List'
+            inputs:
+              azureSubscription: '$(AzureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+                echo 'Test with subscription'
+                az account set --subscription ${{ parameters.subscriptions[parameters.environment] }}
+                az account show
+                terraform state list
+              workingDirectory: $(workingDirectory)
+          - task: AzureCLI@2
+            displayName:  'Terraform or Commandline Fix'
+            inputs:
+              azureSubscription: '$(AzureServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+                az account set --subscription ${{ parameters.subscriptions[parameters.environment] }}
+                az account show
+
+                # Set Terraform logging
+                # export TF_LOG=DEBUG
+
+                # Destroy all terraform managed resources
+                # Don't run this unless you're absolutely sure
+                # terraform destroy \
+                #   -var-file=env/${{ parameters.environment }}.tfvars \
+                #   -auto-approve
+
+                # remove the lock from the storage account
+                # echo "Removing lock from storage account"
+                # az lock delete --name LockStorageAccount --resource-group rg-shift --resource steuwshift --resource-type "Microsoft.Storage/storageAccounts"
+
+                # Create the lock on the storage account again after removing it
+                # echo "Creating lock on storage account again"
+                # az lock create --name "LockStorageAccount" --lock-type CanNotDelete --resource-group rg-shift --resource steuwshift --resource-type "Microsoft.Storage/storageAccounts" --notes "This lock is to prevent accidental deletion of the storage account"
+
+                # Import the user assigned identity
+                # terraform import -var-file=env/${{ parameters.environment }}.tfvars \
+                # 'module.managed_identities["id-euw-aks-shift"].azurerm_user_assigned_identity.id[0]' \
+                # /subscriptions/30b3c71d-a123-a123-a123-abcd12345678/resourceGroups/rg-shift/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-euw-aks-shift

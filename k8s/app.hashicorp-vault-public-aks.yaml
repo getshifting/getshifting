@@ -1,0 +1,150 @@
+---
+# See https://wiki.getshifting.com/akshashicorpvault for more information on this deployment.
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vault
+spec:
+  parentRefs:
+  - name: gateway
+  hostnames: ["aks.getshifting.com"]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ui
+    - path:
+        type: PathPrefix
+        value: /v1
+    backendRefs:
+    - name: vault-ui
+      port: 8200
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: shift-app-spc
+spec:
+  provider: vault
+  parameters:
+    vaultAddress: "http://vault.ops:8200"
+    roleName: "shiftrole"
+    objects: |
+      - objectName: "shift-password-cli"
+        secretPath: "secret/data/vaultsecretcli"
+        secretKey: "password"
+      - objectName: "shift-username-cli"
+        secretPath: "secret/data/vaultsecretcli"
+        secretKey: "username"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shift-sa
+  namespace: ops
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: alpine-spc
+spec:
+  serviceAccountName: shift-sa
+  restartPolicy: Never
+  containers:
+    - name: alpine-addon
+      image: alpine:3.24.1
+      args:
+        - |-
+          apk update
+          apk add --no-cache curl busybox-extras bash
+          sleep infinity
+      command:
+        - "/bin/sh"
+        - "-c"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      volumeMounts:
+      - name: secrets-store-inline
+        mountPath: "/mnt/secrets-store"
+        readOnly: true
+  volumes:
+    - name: secrets-store-inline
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: "shift-app-spc"
+---
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: shift-app-spc-sync
+spec:
+  provider: vault
+  secretObjects:
+  - data:
+    - key: password
+      objectName: shift-password
+    - key: username
+      objectName: shift-username
+    secretName: k8svaultsecret
+    type: Opaque
+  parameters:
+    vaultAddress: "http://vault.ops:8200"
+    roleName: "shiftrole"
+    objects: |
+      - objectName: "shift-password"
+        secretPath: "secret/data/vaultsecret"
+        secretKey: "password"
+      - objectName: "shift-username"
+        secretPath: "secret/data/vaultsecret"
+        secretKey: "username"
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: alpine-spc-sync
+spec:
+  serviceAccountName: shift-sa
+  restartPolicy: Never
+  containers:
+    - name: alpine-addon
+      image: alpine:3.24.1
+      args:
+        - |-
+          apk update
+          apk add --no-cache curl busybox-extras bash
+          sleep infinity
+      command:
+        - "/bin/sh"
+        - "-c"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      env:
+      - name: SHIFT_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: k8svaultsecret
+            key: password
+      volumeMounts:
+      - name: secrets-store-inline
+        mountPath: "/mnt/secrets-store"
+        readOnly: true
+  volumes:
+    - name: secrets-store-inline
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: "shift-app-spc-sync"

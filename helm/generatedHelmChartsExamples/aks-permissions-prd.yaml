@@ -1,0 +1,137 @@
+---
+# Source: aks-permissions/templates/roles.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nodes-viewer
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: aks-permissions/templates/roles.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crd-viewer
+rules:
+# Access to Custom Resource Definitions
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch"]
+# ArgoCD custom resources
+- apiGroups: ["argoproj.io"]
+  resources: ["applications", "applicationsets", "appprojects"]
+  verbs: ["get", "list", "watch"]
+# Postgres custom resources
+- apiGroups: ["postgres.cnpg.io"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS ClusterAdmins: cluster-admin in ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin
+subjects:
+- kind: Group
+  name: 81ad8e15-96ad-4e2b-835b-734a5b289111
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS NsAdmins: view in ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-viewer
+subjects:
+- kind: Group
+  name: bde4755e-4153-420c-96da-554718bc92dd
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: view
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS NsAdmins: nodes-viewer in ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nodes-viewer
+subjects:
+- kind: Group
+  name: bde4755e-4153-420c-96da-554718bc92dd
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: nodes-viewer
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS NsAdmins: crd-viewer in ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crd-viewer
+subjects:
+- kind: Group
+  name: bde4755e-4153-420c-96da-554718bc92dd
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: crd-viewer
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS NsAdmins: admin in RoleBinding to app1/app2
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-admin
+  namespace: app1
+subjects:
+- kind: Group
+  name: bde4755e-4153-420c-96da-554718bc92dd
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS NsAdmins: admin in RoleBinding to app1/app2
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-admin
+  namespace: app2
+subjects:
+- kind: Group
+  name: bde4755e-4153-420c-96da-554718bc92dd
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: admin
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: aks-permissions/templates/rolebinding.yaml
+# PIM PRD AKS Editors: edit in RoleBinding to app2
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-edit
+  namespace: app2
+subjects:
+- kind: Group
+  name: 59183f47-719d-4b67-a8fc-424183610a0b
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io

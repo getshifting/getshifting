@@ -1,0 +1,56 @@
+{
+    "recommendations": [
+        // Architecture
+        "hediet.vscode-drawio", // draw.io integration
+        // AWS
+        "amazonwebservices.aws-toolkit-vscode", // AWS Toolkit
+        // Azure
+        "ms-azuretools.vscode-bicep", // Azure BICEP
+        "ms-azure-devops.azure-pipelines", // Azure pipelines
+        "ms-vscode.azurecli", // Azure CLI
+        // Co-Pilot
+        "github.copilot-chat", // Github CoPilot
+        // Docker
+        "ms-azuretools.vscode-docker", // Docker
+        // Formatting
+        "esbenp.prettier-vscode", // Default formatting - note that prettier can try to be very persuasive. Use save without formatting when required.
+        // Git
+        "niclasvaneyk.am-i-behind", // Checks for commits in remote repo
+        "mhutchie.git-graph", // Git graph
+        "eamodio.gitlens", // Git Lens
+        // GitHub Actions
+        "github.vscode-github-actions",
+        // Kubernetes
+        "ms-kubernetes-tools.vscode-kubernetes-tools", // Kubernetes
+        "ms-vscode-remote.remote-ssh", // Remote SSH, After installation go to 'Preferences - User Settings' -> Extensions -> Remote - SSH -> 'Remote.SSH: Local Server Download'; Set to 'Auto'. This will make sure that the remote VSCode-Server-Linux installation is updated automatically using the local VSCode.
+        "ms-vscode.remote-explorer", // Remote Explorer, use in combination with Remote SSH and K8S
+        // Markdown
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint", // markdown linter
+        "ni.azdo-wiki-md", // enables support for Azure DevOps table of content [[_TOC_]]
+        // Misc
+        "gruntfuggly.todo-tree", // Add TODO in code
+        "brunnerh.insert-unicode", // Insert Unicode
+        "tylerdailey.vscode-base64utils", // Base64 encode/decode with right-click menu
+        "mechatroner.rainbow-csv", // Rainbow CSV
+        "lukapetrovic.image-resizer", // Image resizer, right click: width[x]height 50x50 256x100 autox400 400xauto
+        "chrisdias.vscode-opennewinstance", // Adds reopen / new workbench to folder menu
+        "oderwat.indent-rainbow", // Indent rainbow coloring
+        "iulian-radu-at.vscode-tasks-sidebar", // Task sidebar
+        // Postman
+        "postman.postman-for-vscode", // Postman API tester
+        // Powershell
+        "ms-vscode.powershell", // Powershell
+        // Python
+        "ms-python.python", // Python
+        "ms-python.black-formatter", // Python formatter
+        // Remote Development
+        "ms-vscode-remote.remote-containers", // Remote - Containers
+        "ms-vscode-remote.remote-ssh", // Remote - SSH
+        "ms-vscode.remote-explorer", // Remote Explorer, use in combination with Remote SSH and K8S
+        // SQL
+        "ms-mssql.mssql", //sql
+        // Terraform
+        "hashicorp.terraform" // Terraform
+    ]
+}

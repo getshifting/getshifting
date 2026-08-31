@@ -1,0 +1,16 @@
+clusterRoleBindings:
+  - name: cluster-admin-devops
+    groupName: "780741a1-18ca-411c-89d5-252be095bc16"
+    clusterRole: cluster-admin
+    description: "sec-devops: cluster-admin in ClusterRoleBinding"
+  - name: cluster-admin-data
+    groupName: "94eae29e-a16b-4949-8acc-3196d013c295"
+    clusterRole: cluster-admin
+    description: "sec-data: cluster-admin in ClusterRoleBinding"
+roleBindings:
+  - name: namespace-edit
+    groupName: "cb556108-a2d9-45ca-a1ee-4ac20bfe1f59"
+    clusterRole: edit
+    namespaces:
+      - app1
+    description: "sec-developers: edit in RoleBinding to app1"

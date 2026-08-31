@@ -1,0 +1,16 @@
+# Default values for azure-secretprovider.
+
+# The tenant ID for the Azure AD application
+tenantId: ""
+
+# The client ID for the Azure AD application
+clientID: ""
+
+# The keyvault name where the secrets are stored
+keyvaultName: ""
+
+# A list of secret names to be fetched from the Key Vault
+secrets: []
+
+# Configuration for creating Kubernetes secret objects from the fetched secrets
+secretObjects: []

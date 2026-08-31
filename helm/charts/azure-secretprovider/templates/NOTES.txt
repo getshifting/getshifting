@@ -1,0 +1,3 @@
+More information on using this chart can be found on my wiki:
+
+https://wiki.getshifting.com/helmchartsecretprovider

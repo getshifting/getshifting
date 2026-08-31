@@ -1,0 +1,31 @@
+clusterRoleBindings:
+  - name: cluster-admin
+    groupName: "81ad8e15-96ad-4e2b-835b-734a5b289111"
+    clusterRole: cluster-admin
+    description: "PIM PRD AKS ClusterAdmins: cluster-admin in ClusterRoleBinding"
+  - name: cluster-viewer
+    groupName: "bde4755e-4153-420c-96da-554718bc92dd"
+    clusterRole: view
+    description: "PIM PRD AKS NsAdmins: view in ClusterRoleBinding"
+  - name: nodes-viewer
+    groupName: "bde4755e-4153-420c-96da-554718bc92dd"
+    clusterRole: nodes-viewer
+    description: "PIM PRD AKS NsAdmins: nodes-viewer in ClusterRoleBinding"
+  - name: crd-viewer
+    groupName: "bde4755e-4153-420c-96da-554718bc92dd"
+    clusterRole: crd-viewer
+    description: "PIM PRD AKS NsAdmins: crd-viewer in ClusterRoleBinding"
+roleBindings:
+  - name: namespace-admin
+    groupName: "bde4755e-4153-420c-96da-554718bc92dd"
+    clusterRole: admin
+    namespaces:
+      - app1
+      - app2
+    description: "PIM PRD AKS NsAdmins: admin in RoleBinding to app1/app2"
+  - name: namespace-edit
+    groupName: "59183f47-719d-4b67-a8fc-424183610a0b"
+    clusterRole: edit
+    namespaces:
+      - app2
+    description: "PIM PRD AKS Editors: edit in RoleBinding to app2"
